@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+<title>DH</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="icon" 
+              type="image/png" 
+              href="favicon.ico" />
+
+        <style type="text/css">
+
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100%; 
+                max-height: 100%; 
+                font-family:Sans-serif;
+                line-height: 1.5em;
+            }
+
+            main {
+                position: fixed;
+                top: 50px; /* Set this to the height of the header */
+                bottom: 50px; /* Set this to the height of the footer */
+                left: 230px; 
+                right: 0;
+                overflow: auto; 
+                background: #fff;
+            }
+
+            #header {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 50px; 
+                overflow: hidden; /* Disables scrollbars on the header frame. To enable scrollbars, change "hidden" to "scroll" */
+                background: #BCCE98;
+            }
+
+            #footer {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: 50px; 
+                overflow: hidden; /* Disables scrollbars on the footer frame. To enable scrollbars, change "hidden" to "scroll" */
+                background: #BCCE98;
+            }
+
+            #dhbody {
+                
+                width: 40%;
+                overflow: auto;
+            }
+
+            #canvas {
+                position: absolute;
+                top: 50px; 
+                right: 0; 
+                width: 45%;
+                height: 80%; 
+                overflow: hidden; 
+            }
+
+            #info {
+                position: absolute;
+                top: 50px;
+                left: 10px;
+                padding: 5px;
+            }
+
+            #gui {
+                position:absolute;
+                top: 0px;
+                right: -10px;
+            }
+
+            #mechlabImg {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+            }
+
+            #nav {
+                position: absolute; 
+                top: 50px; /* Set this to the height of the header */
+                bottom: 50px; /* Set this to the height of the footer */
+                left: 0; 
+                width: 230px;
+                overflow: auto; /* Scrollbars will appear on this frame only when there's enough content to require scrolling. To disable scrollbars, change to "hidden", or use "scroll" to enable permanent scrollbars */
+                background: #DAE9BC; 		
+            }
+
+            .innertube {
+                margin: 15px; /* Provides padding for the content */
+            }
+
+            p {
+                color: #555;
+            }
+
+            nav ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            nav ul a {
+                color: darkgreen;
+                text-decoration: none;
+            }
+
+            /*IE6 fix*/
+            * html body{
+                padding: 50px 0 50px 230px; /* Set the first value to the height of the header, the third value to the height of the footer, and last value to the width of the nav */
+            }
+
+            * html main{ 
+                height: 100%; 
+                width: 100%; 
+            }
+
+            table.GeneratedTable {
+                width:100%;
+                background-color:#FFFFFF;
+                border-collapse:collapse;border-width:1px;
+                border-color:#336600;
+                border-style:solid;
+                color:#009900;
+            }
+
+            table.GeneratedTable td, table.GeneratedTable th {
+                border-width:1px;
+                border-color:#336600;
+                border-style:solid;
+                padding:3px;
+            }
+
+            table.GeneratedTable thead {
+                background-color:#CCFF99;
+            }
+
+            button {
+                float: left;
+                margin-top: 10px;
+                margin-right: 10px;
+            }
+
+
+            label {
+                display: block;
+                margin: 30px 0 0 0;
+            }
+            select {
+                float: left;
+                width: 80px;
+            }
+
+        </style>
+
+
+    </head>
+    <body>
+        <header id="header">
+            <div class="innertube">
+                <p>DH table visualization </p>
+            </div>
+        </header>
+
+        <main>
+            <div class="innertube">
+            <div id="dhbody">
+            <h1>DH-Table:</h1>
+
+
+                <!-- HTML Code -->
+                <table class="GeneratedTable">
+
+                    <thead>
+                        <tr>
+                            <th>Link</th>
+                            <th>&alpha;<sub>i-1</sub></th>
+                            <th>a<sub>i-1</sub></th>
+                            <th>d<sub>i</sub></th>
+                            <th>&theta;<sub>i</sub></th>
+                            <th>&theta;<sub>i, offset</sub></th>
+                            <th>type</th>
+                            <th>min</th>
+                            <th>max</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dh">
+                    </tbody>
+                </table> 
+                <button id="addRowButton">Add row</button>
+                <button id="removeRowButton">Remove row</button>
+                <button id="updateButton">Update</button>
+
+                <div id="canvas">
+                    <div id="info"></div>
+                    <div id="gui"></div>
+                </div>
+
+                <p>
+                    <br>
+                    <b>&alpha;<sub>i</sub>:</b> Link twist <small>(the angle between and z<sub>i</sub> and z<sub>i+1</sub>, measured in the plane normal to x<sub>i</sub>)</small> 
+                    <br>
+                    <b>a<sub>i</sub>:</b> Link length <small>(the perpendicular distance between z<sub>i</sub> and z<sub>i+1</sub>, measured along x<sub>i</sub>)</small>
+                    <br>
+                    <b>d<sub>i</sub>:</b> Link offset <small>(the distance from x<sub>i-1</sub> to x<sub>i</sub> measured along z<sub>i</sub>)</small>
+                    <br>
+                    <b>&theta;<sub>i</sub>:</b> Joint angle <small>(the angle between and x<sub>i-1</sub> and x<sub>i</sub>, measured in the plane normal to z<sub>i</sub>)</small> 
+                    <br>
+                    <b>&theta;<sub>i, offset</sub>:</b> &theta;<sub>i</sub> offset 
+                    <br>
+                    <b>type:</b> Joint type (revolute or prismatic)
+                    <br>
+                    <b>min & max</b> min and max joint value respectably
+                </p>
+
+                <div id="mechlabImg"><img src="mechlab_logo.PNG" alt="Mechlab logo" style="width:300px;height:100px"></div>
+ </div>
+            </div>
+        </main>
+
+        <nav id="nav">
+            <div class="innertube">
+                <h1>Links</h1>
+                <ul>
+                    <li><a href="https://www.hials.no/">AAUC</a></li>
+                    <li><a href="http://amo.hials.no/mechatronics/">AAUC - Mechlab</a></li>
+                </ul>
+
+            </div>
+        </nav>	
+
+        <footer id="footer">
+            <div class="innertube">
+                <p>&copy; 2015 Aalesund University College</p>
+            </div>
+        </footer>
+
+     
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+       
+       <script src="three/Detector.js"></script>
+        <script src="three/mythree.min.js"></script>
+         <script src="three/examples/js/libs/dat.gui.min.js"></script>
+        <script src="js/VCP.js"></script>
+        
+        <script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-52070322-1', 'auto');
+	  ga('send', 'pageview');
+	</script>
+
+        <script>
+
+            $(document).ready(function () {
+
+                if (!Detector.webgl) {
+                    Detector.addGetWebGLMessage();
+                    document.getElementById('canvas').innerHTML = "";
+                }
+
+                var container, renderer, scene, camera;
+                var controls, stats, gui;
+
+                var helpers = [];
+                var lines = [];
+
+                var values = {};
+
+                init();
+                render();
+
+                function init() {
+
+                    container = document.getElementById('canvas');
+                    document.body.appendChild(container);
+
+                    renderer = new THREE.WebGLRenderer({antialiasing: true});
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+                    renderer.setClearColor(new THREE.Color(0.9, 0.9, 0.9));
+                    container.appendChild(renderer.domElement);
+
+                    scene = new THREE.Scene();
+
+
+                    var gridHelper = new THREE.GridHelper(50, 1);
+                    gridHelper.rotateX(Math.PI / 2);
+                    scene.add(gridHelper);
+
+                    camera = new THREE.PerspectiveCamera(55, container.offsetWidth / container.offsetHeight, 0.5, 10000);
+                    camera.up.set(0, 0, 1);
+                    camera.position.set(-10, -10, 10);
+
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.maxDistance = 500.0;
+                    controls.maxPolarAngle = Math.PI * 0.495;
+                    controls.center.set(0, 0, 0);
+
+                    stats = new Stats();
+                    stats.domElement.style.position = 'absolute';
+                    stats.domElement.style.top = '0px';
+                    container.appendChild(stats.domElement);
+
+
+                    var info = "<span style='color:#ff0000'>Red:</span> X-Axis"
+                            + "<br>"
+                            + "<span style='color:#00ff00'>Green:</span> Y-Axis"
+                            + "<br>"
+                            + "<span style='color:#0000ff'>Blue:</span> Z-Axis";
+
+                    $('#info').html(info);
+
+                    window.addEventListener('resize', onWindowResize, false);
+
+                }
+
+                function onWindowResize() {
+
+                    camera.aspect = container.offsetWidth / container.offsetHeight;
+                    camera.updateProjectionMatrix();
+
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+
+                    render();
+                }
+
+
+                function render() {
+
+                    requestAnimationFrame(render);
+
+                    stats.update();
+                    controls.update();
+
+                    renderer.render(scene, camera);
+
+                }
+
+
+                var numRows = 0;
+                var tableRows = [];
+                var tableCells = [];
+                var types = [];
+
+                generateDHTableRow(0, 0, 2.61);
+                generateDHTableRow(90, 0, 0);
+                generateDHTableRow(0, 7.01, 0);
+                generateDHTableRow(0, 3.61, 0);
+
+
+
+                $('#addRowButton').click(function () {
+                    generateDHTableRow();
+                });
+
+                $('#updateButton').click(function () {
+                    
+                    var dh = parseDH();
+
+                    for (var i = 0; i < helpers.length; i++) {
+                        scene.remove(helpers[i]);
+                    }
+                    helpers = [];
+
+                    for (var i = 0; i < lines.length; i++) {
+                        scene.remove(lines[i]);
+                    }
+                    lines = [];
+
+                    getFwdKin(dh);
+                    var material = new THREE.LineBasicMaterial({
+                        color: 0x000000
+                    });
+                    var geometry = new THREE.Geometry();
+                    for (var i = 1; i < helpers.length; i++) {
+                        geometry.vertices.push(helpers[i - 1].position);
+                        geometry.vertices.push(helpers[i].position);
+                    }
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    lines.push(line);
+
+                    if (gui) {
+                        gui.domElement.remove();
+                    }
+                    gui = new dat.GUI();
+                    $('#gui').append(gui.domElement);
+                    var folder = gui.addFolder('Joint values');
+                    folder.open();
+
+
+                    for (var i = 0; i < dh.length; i++) {
+
+                        var min = (dh[i][5]);
+                        var max = (dh[i][6]);
+                        if (types[i].val() === 'R') {
+                            values['j' + (i + 1)] = (dh[i][3]);
+                        } else {
+                            values['j' + (i + 1)] = (dh[i][2]);
+                        }
+
+                        var j = folder.add(values, 'j' + (i + 1), min, max);
+                        j.onChange(function (value) {
+
+                            for (var k = 0; k < helpers.length - 1; k++) {
+                                if (types[k].val() === 'R') {
+                                    tableCells[k][3].text(values['j' + (k + 1)].toFixed(2));
+                                } else {
+                                    tableCells[k][2].text(values['j' + (k + 1)].toFixed(2));
+                                }
+                            }
+                            update();
+                        });
+                    }
+
+                });
+
+                $('#removeRowButton').click(function () {
+                    destroyDHTableRow();
+                });
+
+                function update() {
+                    var dh = parseDH();
+
+                    for (var i = 0; i < helpers.length; i++) {
+                        scene.remove(helpers[i]);
+                    }
+                    helpers = [];
+
+                    for (var i = 0; i < lines.length; i++) {
+                        scene.remove(lines[i]);
+                    }
+                    lines = [];
+
+                    getFwdKin(dh);
+                    var material = new THREE.LineBasicMaterial({
+                        color: 0x000000
+                    });
+                    var geometry = new THREE.Geometry();
+                    for (var i = 1; i < helpers.length; i++) {
+                        geometry.vertices.push(helpers[i - 1].position);
+                        geometry.vertices.push(helpers[i].position);
+                    }
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    lines.push(line);
+                }
+                
+                
+
+                function generateDHTableRow(n1, n2, n3, n4, n5, n6) {
+
+                    if (numRows > 8) {
+                        alert('Maximum number of rows reached!');
+                        return;
+                    }
+
+                    var dh = $('#dh');
+                    tableCells.push([]);
+                    var tr = $('<tr>').appendTo(dh);
+                    tableRows.push(tr);
+                    for (var i = 0; i < 6; i++) {
+
+                        if (i === 0) {
+                            $("<td></td>").text(numRows + 1).appendTo(tr);
+                        } else {
+                            tableCells[numRows].push(
+                                    $("<td contenteditable='true'></td>").text(0).appendTo(tr));
+                        }
+                    }
+
+                    var td = $("<td>").appendTo(tr);
+                    var select = $('<select>').appendTo(td);
+                    $("<option />", {value: 'R', text: 'Revolute'}).appendTo(select);
+                    $("<option />", {value: 'P', text: 'Prismatic'}).appendTo(select);
+
+                    types.push(select);
+
+                    tableCells[numRows].push($("<td contenteditable='true'></td>").text(-90).appendTo(tr)); //min
+                    tableCells[numRows].push($("<td contenteditable='true'></td>").text(90).appendTo(tr)); //max
+
+                    if (n1) {
+                        tableCells[numRows][0].text(n1);
+                    }
+                    if (n2) {
+                        tableCells[numRows][1].text(n2);
+                    }
+                    if (n3) {
+                        tableCells[numRows][2].text(n3);
+                    }
+                    if (n4) {
+                        tableCells[numRows][3].text(n4);
+                    }
+                    if (n5) {
+                        tableCells[numRows][4].text(n5);
+                    }
+                    if (n6) {
+                        tableCells[numRows][5].text(n6);
+                    }
+
+                    numRows++;
+                }
+
+                function destroyDHTableRow() {
+                    if (numRows > 0) {
+                        $(tableRows[numRows - 1]).remove();
+                        numRows--;
+                        tableRows.pop();
+                        tableCells.pop();
+                    } else {
+                        alert('Nothing to remove!');
+                    }
+                }
+
+                function getDH() {
+                    var table = [];
+                    for (var i = 0; i < tableCells.length; i++) {
+                        var row = '';
+                        for (var j = 0; j < tableCells[i].length; j++) {
+                            row += (tableCells[i][j].text());
+                            if (j !== tableCells[i].length - 1) {
+                                row += " ";
+                            }
+                        }
+                        table.push(row);
+                    }
+                    return table;
+                }
+
+                function parseDH() {
+                    var dh = getDH();
+                    var parsed = [];
+
+                    for (var i = 0; i < dh.length; i++) {
+                        parsed.push([]);
+                        var row = dh[i].split(" ");
+                        for (var j = 0; j < row.length; j++) {
+                            var num = parseFloat(row[j]);
+                            if (isNaN(num)) {
+                                alert('error parsing row ' + (i + 1) + ', column ' + (j + 1));
+                            }
+                            parsed[i].push(num);
+                        }
+                    }
+                    return parsed;
+                }
+
+                function getFwdKin(dh) {
+
+                    var tmp = new THREE.Matrix4();
+
+                    var result = new THREE.Matrix4();
+                    var results = [];
+
+                    var axisHelper = new VCP.TransformHelper2(2, true);
+                    axisHelper.position.setFromMatrixPosition(result);
+                    axisHelper.rotation.setFromRotationMatrix(result);
+
+                    helpers.push(axisHelper);
+                    scene.add(axisHelper);
+
+
+                    for (var row = 0; row < dh.length; row++) {
+
+                         var alpha = THREE.Math.degToRad(dh[row][0]);
+                        var a = dh[row][1];
+                        var d = dh[row][2];
+                        var theta = THREE.Math.degToRad(dh[row][3]) + THREE.Math.degToRad(dh[row][4]);
+
+                        var ct = Math.cos(theta), st = Math.sin(theta);
+                        var ca = Math.cos(alpha), sa = Math.sin(alpha);
+                        
+                        var n11 = ct, n12 = -st, n13 = 0, n14 = a;
+                        var n21 = st * ca, n22 = ct * ca, n23 = -sa, n24 = -d * sa;
+                        var n31 = st * sa, n32 = ct * sa, n33 = ca, n34 = d * ca;
+                        var n41 = 0, n42 = 0, n43 = 0, n44 = 1; 
+
+                        result.multiply(tmp.set( n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44 ));
+                        results.push(new THREE.Matrix4().copy(result));
+
+                        var axisHelper = new VCP.TransformHelper2(2, true);
+                        axisHelper.position.setFromMatrixPosition(result);
+                        axisHelper.rotation.setFromRotationMatrix(result);
+
+                        helpers.push(axisHelper);
+                        scene.add(axisHelper);
+
+                    }
+
+                    return results;
+
+                }
+
+                $('#updateButton').click();
+            });
+
+
+        </script>
+
+    </body>
+</html>

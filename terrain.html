@@ -1,0 +1,205 @@
+<html>
+	<head>
+		<title>Aalesund</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+    
+    <script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-52070322-1', 'auto');
+	  ga('send', 'pageview');
+	</script>
+    
+		<script src="mythree.min.js"></script>
+        <script src="three/examples/js/SkyShader.js"></script>
+		<script>
+        
+            var parameters = {
+				width: 2000,
+				height: 2000,
+				widthSegments: 250,
+				heightSegments: 250,
+				depth: 1500,
+				param: 4,
+				filterparam: 1
+			}
+            
+            var sky, sunSphere;
+        
+        
+			var scene = new THREE.Scene();
+          //  scene.add(new THREE.AmbientLight(0xffffff));
+            
+			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 100000 );
+
+			var renderer = new THREE.WebGLRenderer();
+            renderer.setClearColor( 0xB8B8B8 , 1 );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+            
+			camera.position.set(500, 200, 500);
+            
+            controls = new THREE.OrbitControls( camera );
+			controls.damping = 0.2;
+            
+            var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+            light.position.set( 0, 1, 0 );
+            scene.add(light);
+            
+            
+            var waterNormals = new THREE.ImageUtils.loadTexture( 'textures/waternormals.jpg' );
+				waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping; 
+
+				var water = new THREE.Water( renderer, camera, scene, {
+					textureWidth: 512, 
+					textureHeight: 512,
+					waterNormals: waterNormals,
+					alpha: 	0.9,
+					sunDirection: light.position.clone().normalize(),
+					sunColor: 0xffffff,
+					waterColor: 0x001e0f,
+					distortionScale: 50.0,
+				} );
+
+
+				var mirrorMesh = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry( 5041, 5041 ),
+					water.material
+				);
+
+				mirrorMesh.add( water );
+				mirrorMesh.rotation.x = - Math.PI * 0.5;
+				scene.add( mirrorMesh );
+                
+                
+                // load skybox
+
+				var cubeMap = new THREE.CubeTexture( [] );
+				cubeMap.format = THREE.RGBFormat;
+				cubeMap.flipY = false;
+
+				var loader = new THREE.ImageLoader();
+				loader.load( 'textures/skyboxsun25degtest.png', function ( image ) {
+
+					var getSide = function ( x, y ) {
+
+						var size = 1024;
+
+						var canvas = document.createElement( 'canvas' );
+						canvas.width = size;
+						canvas.height = size;
+
+						var context = canvas.getContext( '2d' );
+						context.drawImage( image, - x * size, - y * size );
+
+						return canvas;
+
+					};
+
+					cubeMap.images[ 0 ] = getSide( 2, 1 ); // px
+					cubeMap.images[ 1 ] = getSide( 0, 1 ); // nx
+					cubeMap.images[ 2 ] = getSide( 1, 0 ); // py
+					cubeMap.images[ 3 ] = getSide( 1, 2 ); // ny
+					cubeMap.images[ 4 ] = getSide( 1, 1 ); // pz
+					cubeMap.images[ 5 ] = getSide( 3, 1 ); // nz
+					cubeMap.needsUpdate = true;
+
+				} );
+
+				var cubeShader = THREE.ShaderLib['cube'];
+				cubeShader.uniforms['tCube'].value = cubeMap;
+
+				var skyBoxMaterial = new THREE.ShaderMaterial( {
+					fragmentShader: cubeShader.fragmentShader,
+					vertexShader: cubeShader.vertexShader,
+					uniforms: cubeShader.uniforms,
+					depthWrite: false,
+					side: THREE.BackSide
+				});
+
+				var skyBox = new THREE.Mesh(
+					new THREE.BoxGeometry( 100000, 100000, 100000 ),
+					skyBoxMaterial
+				);
+				
+				scene.add( skyBox );
+            
+            
+            loadTerrain("data/aalesund.bin", function (data) {
+                var geometry = new THREE.PlaneBufferGeometry(5041, 5041, 1023, 1023);
+                geometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+                var vertices = geometry.attributes.position.array;
+                var min, max;
+                for (var i = 0, j = 0, l = vertices.length; i < l; i++, j += 3) {
+                     var value = data[i];
+                     vertices[ j + 1 ] = (value / 65535.0 * 255) - 1.8;
+                     
+                     if (!min) {
+                        min = value;
+                     } else {
+                        if (value < min) {
+                         min = value;
+                        }
+                     }
+                     if (!max) {
+                        max = value;
+                     } else {
+                        if (value > max) {
+                         max = value;
+                        }
+                     }
+                }
+                
+                //console.log(min + " " + max);
+                
+                var material = new THREE.MeshPhongMaterial({
+                    map: THREE.ImageUtils.loadTexture('data/aalesund_terrain.png', undefined, function(){
+                        
+                    })
+                });
+                
+
+                var plane = new THREE.Mesh(geometry, material);
+                scene.add(plane);
+                
+            });
+
+			function render() {
+                requestAnimationFrame(render);
+            
+                var time = performance.now() * 0.001;
+                water.material.uniforms.time.value += 1.0 / 60.0;
+                water.render();
+				renderer.render(scene, camera);
+			};
+            
+            render();
+           
+            function loadTerrain(file, callback) {
+              var xhr = new XMLHttpRequest();
+              xhr.responseType = 'arraybuffer';
+              xhr.open('GET', file, true);
+              xhr.onload = function(evt) {    
+                if (xhr.response) {
+                  callback(new Uint16Array(xhr.response));
+                }
+              };  
+              xhr.send(null);
+            }
+            
+            function map(x, in_min, in_max, out_min, out_max) {
+                return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+            }
+            
+            
+		</script>
+	</body>
+</html>

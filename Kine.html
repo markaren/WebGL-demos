@@ -1,0 +1,332 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>VCP - Kine</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <style>
+        div#one {
+            width: 30%;
+            height: 100%;
+            background: white;
+            float: left;
+        }
+
+        div#two {
+            width: 70%;
+            height: 100%;
+            background: white;
+            float: right;
+        }
+    </style>
+
+    <script src="three/build/three.min.js"></script>
+    <script src="three/examples/js/geometries/ConvexGeometry.js"></script>
+     <script src="js/numeric-1.2.6.min.js"></script>
+
+    <script src="js/VCP.js"></script>
+	<script src="js/BoundingBox.js"></script>
+	<script src="js/Kine2.js"></script>
+   
+    <script src="three/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="three/examples/js/libs/dat.gui.min.js"></script>
+    <script src="three/examples/js/libs/stats.min.js"></script>
+
+    
+</head>
+<body>
+
+    <div id="header" style="background-color: #FFA500;">
+        <h1 style="margin-top: 0; text-align: center">Kine</h1>
+    </div>
+
+
+    <div id="one">
+      <input type="button" value="Add Joint" onclick="addJoint();" />
+      <input type="button" value="Remove Joint" onclick="removeJoint();" />
+      <input type="button" value="Update" onclick="updateKine();" />
+    </div>
+    <div id="two"></div>
+
+
+
+    <script>
+        "use strict";
+        // scene size
+        var WIDTH = window.innerWidth * 0.7;
+        var HEIGHT = window.innerHeight * 0.9;
+
+        // camera
+        var FOV = 45;
+        var ASPECT = (WIDTH) / (HEIGHT);
+        var NEAR = 0.01;
+        var FAR = 100000;
+
+        var scene, renderer, canvas, camera, controls, stats;
+        var kine, grid, skybox, gui;
+        var jointId = -1;
+        var ids = [];
+        var remove = false;
+
+        var clock = new THREE.Clock();
+
+
+        var minMaxHtml = '<label for="min"> min: </label>'
+                        + '<input type="text" name="min" maxlength="4" size="4">'
+                        + '<label for="max"> max: </label>'
+                        + '<input type="text" name="max" maxlength="4" size="4">';
+
+        function init() {
+            canvas = document.getElementById('two');
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR * 2);
+            camera.position.set(15, 15, 15);
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+            renderer = new THREE.WebGLRenderer({ antialiasing: true });
+            renderer.setSize(WIDTH, HEIGHT);
+            renderer.clearColor = VCP.WHITE;
+            canvas.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.maxDistance = 200
+
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.top = '0px';
+            stats.domElement.style.left = '0px';
+            canvas.appendChild(stats.domElement);
+
+            skybox = new VCP.Skybox(FAR / 2)
+            scene.add(skybox);
+
+            addInitialJoints();
+            updateKine();
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+
+        function render() {
+            requestAnimationFrame(render);
+            var delta = clock.getDelta();
+            var time = clock.getElapsedTime();
+
+            controls.update(delta);
+            stats.update();
+
+
+            if (remove) {
+                remove = false;
+            }
+
+            if (kine) {
+                kine.update(delta);
+                kine.draw();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updateKine() {
+            var obj, i;
+            for (i = scene.children.length - 1; i >= 0 ; i--) {
+                obj = scene.children[i];
+                if (obj !== camera && obj != skybox) {
+                    scene.remove(obj);
+                }
+            }
+
+            if (kine) {
+                kine.tearDown();
+                scene.remove(kine);
+            }
+            scene.remove(grid);
+            kine = new VCP.Kine();
+            
+            for (var i = 0; i <= jointId; i++) {
+                var jointTypeSelector = document.getElementById(i).childNodes[0];
+                var type = jointTypeSelector.options[jointTypeSelector.selectedIndex].value;
+
+                var relPos_x = document.getElementById(i).childNodes[2];
+                var relPos_y = document.getElementById(i).childNodes[4];
+                var relPos_z = document.getElementById(i).childNodes[6];
+
+                var x, y, z;
+                x = parseFloat(relPos_x.value);
+                if (isNaN(x)) {
+                    x = 0;
+                }
+                y = parseFloat(relPos_y.value);
+                if (isNaN(y)) {
+                    y = 0;
+                }
+                z = parseFloat(relPos_z.value);
+                if (isNaN(z)) {
+                    z = 0;
+                }
+
+                var min, max;
+                if (document.getElementById(i).childNodes[8] && document.getElementById(i).childNodes[10]) {
+                   
+                    min = parseFloat(document.getElementById(i).childNodes[8].value);
+                    if (isNaN(min)) {
+                        min = 0;
+                    }
+                    max = parseFloat(document.getElementById(i).childNodes[10].value);
+                    if (isNaN(max)) {
+                        max = 0;
+                    }
+                }
+                kine.addJoint(type, new THREE.Vector3(x, y, z), min, max);
+            }
+            kine.finalize();
+
+            var maxReach = kine.boundingBox.maxValue;
+
+            grid = VCP.Grid(maxReach, maxReach/50);
+            scene.add(grid);
+        
+            if (gui) {
+                canvas.removeChild(gui.domElement);
+            }
+            gui = new dat.GUI();
+            canvas.appendChild(gui.domElement);
+            gui.domElement.style.position = 'absolute';
+            gui.domElement.style.top = '0px';
+            gui.domElement.style.right = '-20px';
+            kine.updateGUI(gui);
+            scene.add(kine);
+        }
+
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth * 0.7) / (window.innerHeight * 0.9);
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.9);
+        }
+
+
+        function addJoint() {
+            jointId++;
+
+            var html = '<select name="select">'
+                    + '<option value="FIXED">FIXED</option>'
+                    + '<option value="RX">RX</option>'
+                    + '<option value="RY">RY</option>'
+                    + '<option value="RZ">RZ</option>'
+                    + '<option value="PX">PX</option>'
+                    + '<option value="PY">PY</option>'
+                    + '<option value="PZ">PZ</option>'
+                    + '</select>'
+                    + '<label for="x"> x: </label>'
+                    + '<input type="text" name="relPos_x" maxlength="4" size="4">'
+                    + '<label for="y"> y: </label>'
+                    + '<input type="text" name="relPos_y" maxlength="4" size="4">'
+                    + '<label for="z"> z: </label>'
+                    + '<input type="text" name="relPos_z" maxlength="4" size="4">'
+                    + '<label for="min"> min: </label>'
+                    + '<input type="text" name="min" maxlength="4" size="4">'
+                    + '<label for="max"> max: </label>'
+                    + '<input type="text" name="max" maxlength="4" size="4">';
+
+            addElement('one', 'p', jointId, html);
+        }
+
+        function test(id) {
+            var jointTypeSelector = document.getElementById(id).childNodes[0];
+            var type = jointTypeSelector.options[jointTypeSelector.selectedIndex].value;
+        }
+
+        function removeJoint() {
+            // Removes an element from the document
+            var element = document.getElementById(jointId);
+            element.parentNode.removeChild(element);
+            remove = true;
+            jointId--;
+
+            updateKine();
+        }
+
+        function addElement(parentId, elementTag, elementId, html) {
+            // Adds an element to the document
+            var p = document.getElementById(parentId);
+            var newElement = document.createElement(elementTag);
+            newElement.setAttribute('id', elementId);
+            newElement.innerHTML = html;
+            p.appendChild(newElement);
+        }
+
+        function addInitialJoints() {
+            addJoint();
+            document.getElementById(0).childNodes[0].value = 'RY';
+            document.getElementById(0).childNodes[2].value = 0;
+            document.getElementById(0).childNodes[4].value = 0;
+            document.getElementById(0).childNodes[6].value = 0;
+            document.getElementById(0).childNodes[8].value = -90;
+            document.getElementById(0).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(1).childNodes[0].value = 'RX';
+            document.getElementById(1).childNodes[2].value = 0;
+            document.getElementById(1).childNodes[4].value = 3;
+            document.getElementById(1).childNodes[6].value = 0;
+            document.getElementById(1).childNodes[8].value = -90;
+            document.getElementById(1).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(2).childNodes[0].value = 'RX';
+            document.getElementById(2).childNodes[2].value = 0;
+            document.getElementById(2).childNodes[4].value = 0;
+            document.getElementById(2).childNodes[6].value = 3;
+            document.getElementById(2).childNodes[8].value = -90;
+            document.getElementById(2).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(3).childNodes[0].value = 'RZ';
+            document.getElementById(3).childNodes[2].value = 0;
+            document.getElementById(3).childNodes[4].value = 0;
+            document.getElementById(3).childNodes[6].value = 2;
+            document.getElementById(3).childNodes[8].value = -90;
+            document.getElementById(3).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(4).childNodes[0].value = 'RX';
+            document.getElementById(4).childNodes[2].value = 0;
+            document.getElementById(4).childNodes[4].value = 0;
+            document.getElementById(4).childNodes[6].value = 1;
+            document.getElementById(4).childNodes[8].value = -90;
+            document.getElementById(4).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(5).childNodes[0].value = 'RZ';
+            document.getElementById(5).childNodes[2].value = 0;
+            document.getElementById(5).childNodes[4].value = 0;
+            document.getElementById(5).childNodes[6].value = 0;
+            document.getElementById(5).childNodes[8].value = -90;
+            document.getElementById(5).childNodes[10].value = 90;
+
+            addJoint();
+            document.getElementById(6).childNodes[0].value = 'FIXED';
+            document.getElementById(6).childNodes[2].value = 0;
+            document.getElementById(6).childNodes[4].value = -1;
+            document.getElementById(6).childNodes[6].value = 0;
+
+            addJoint();
+            document.getElementById(7).childNodes[0].value = 'FIXED';
+            document.getElementById(7).childNodes[2].value = 0;
+            document.getElementById(7).childNodes[4].value = 0;
+            document.getElementById(7).childNodes[6].value = 1;
+        }
+
+        init();
+        render();
+
+    </script>
+
+</body>
+</html>

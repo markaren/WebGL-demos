@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js - Oculus Rift - video</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+		
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-52070322-1', 'auto');
+		  ga('send', 'pageview');
+		</script>
+		
+	</head>
+	<body>
+
+		<script src="three/build/three.min.js"></script>
+		<script src="three/examples/js/libs/stats.min.js"></script>
+		<script src="three/examples/js/effects/OculusRiftEffect.js"></script>
+		<script src="js/DK2Controls.js"></script>
+		<script src="js/VCP.js"></script>
+
+		<video id="video" autoplay style="display:none">
+			<source src="three/examples/textures/sintel_720p.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+			<source src="three/examples/textures/sintel_720p.ogv" type='video/ogg; codecs="theora, vorbis"'>
+		</video>
+		
+		<script>
+			"use strict";
+			
+			var container, stats;
+			var camera, scene, renderer, effect, controls;
+
+			var video, image, imageContext,
+			imageReflection, imageReflectionContext, imageReflectionGradient,
+			texture, textureReflection;
+			
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+			
+			
+			var videoWidth = 1280; var videoHeight = 720;
+			
+			var clock = new THREE.Clock();
+
+			init();
+			render();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				
+				var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = '<font color="red"><a href="http://laht.info" target="_blank">laht.info</a> - OCulus Rift DK2 demo. Requires a connected Rift and <a href="http://laht.info/files/OculusWebSocket.zip" target="_blank">this</a> java WS server to run locally</font>';
+				container.appendChild( info );
+
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 10;
+				
+				controls = new THREE.DK2Controls(camera);
+
+				scene = new THREE.Scene();
+				scene.add(new VCP.Skybox(1000));
+
+				video = document.getElementById( 'video' );
+
+				//
+
+				image = document.createElement( 'canvas' );
+				image.width = videoWidth;
+				image.height = videoHeight;
+
+				imageContext = image.getContext( '2d' );
+				imageContext.fillStyle = '#000000';
+				imageContext.fillRect( 0, 0, videoWidth, videoHeight );
+
+				texture = new THREE.Texture( image );
+				texture.minFilter = THREE.LinearFilter;
+				texture.magFilter = THREE.LinearFilter;
+
+				var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5 } );
+
+				imageReflection = document.createElement( 'canvas' );
+				imageReflection.width = videoWidth;
+				imageReflection.height = videoHeight;
+
+				imageReflectionContext = imageReflection.getContext( '2d' );
+				imageReflectionContext.fillStyle = '#000000';
+				imageReflectionContext.fillRect( 0, 0, videoWidth, videoHeight );
+
+				imageReflectionGradient = imageReflectionContext.createLinearGradient( 0, 0, 0, videoHeight );
+				imageReflectionGradient.addColorStop( 0.2, 'rgba(240, 240, 240, 1)' );
+				imageReflectionGradient.addColorStop( 1, 'rgba(240, 240, 240, 0.8)' );
+
+				textureReflection = new THREE.Texture( imageReflection );
+				textureReflection.minFilter = THREE.LinearFilter;
+				textureReflection.magFilter = THREE.LinearFilter;
+
+				var materialReflection = new THREE.MeshBasicMaterial( { map: textureReflection, side: THREE.BackSide, overdraw: 0.5 } );
+
+				//
+				
+				var width = 10; var height = 10; var step = 1; var rot = 40;
+				var tc = new THREE.Matrix4().makeTranslation(0,0,-15);
+				var tcr = new THREE.Matrix4().copy(tc)
+				.multiply(new THREE.Matrix4().makeTranslation(0, -height, 0))
+                .multiply(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(-180)));
+				
+				var tl = new THREE.Matrix4().copy(tc)
+				.multiply(new THREE.Matrix4().makeTranslation(-width/2,0,0))
+				.multiply(new THREE.Matrix4().makeRotationY(THREE.Math.degToRad(rot)))
+				.multiply(new THREE.Matrix4().makeTranslation(-width/2,0,0)); 
+				var tlr = new THREE.Matrix4().copy(tl)
+				.multiply(new THREE.Matrix4().makeTranslation(0, -height, 0))
+                .multiply(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(-180)));
+				
+				var tr = new THREE.Matrix4().copy(tc)
+				.multiply(new THREE.Matrix4().makeTranslation(width/2,0,0))
+				.multiply(new THREE.Matrix4().makeRotationY(-THREE.Math.degToRad(rot)))
+				.multiply(new THREE.Matrix4().makeTranslation(width/2,0,0)); 
+				var trr = new THREE.Matrix4().copy(tr)
+				.multiply(new THREE.Matrix4().makeTranslation(0, -height, 0))
+                .multiply(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(-180)));
+				
+				
+				var lplane = new THREE.PlaneGeometry(width, height, 4, 4 );
+				change_uvs( lplane, 1/3, 1, 0, 0 );
+				
+				var cplane = new THREE.PlaneGeometry(width, height, 4, 4 );
+				change_uvs( cplane, 1/3, 1, 1, 0 );
+				
+				var rplane = new THREE.PlaneGeometry(width, height, 4, 4 );
+				change_uvs( rplane, 1/3, 1, 2, 0 );
+				
+
+				var lmesh = new THREE.Mesh(lplane, material );
+				lmesh.applyMatrix(tl);
+				scene.add(lmesh);
+				
+				var lmeshref = new THREE.Mesh( lplane, materialReflection );
+				lmeshref.applyMatrix(tlr);
+				scene.add( lmeshref );
+				
+				//
+				
+				var cmesh = new THREE.Mesh( cplane, material );
+				cmesh.applyMatrix(tc);
+				scene.add(cmesh);
+				
+				var cmeshref = new THREE.Mesh( cplane, materialReflection );
+				cmeshref.applyMatrix(tcr);
+				scene.add( cmeshref );
+
+				//
+				
+				var rmesh = new THREE.Mesh( rplane, material );
+				rmesh.applyMatrix(tr);
+				scene.add(rmesh);
+				
+				var rmeshref = new THREE.Mesh( rplane, materialReflection );
+				rmeshref.applyMatrix(trr);
+				scene.add( rmeshref );
+				
+				
+				//
+
+				var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+				var material = new THREE.MeshBasicMaterial( {color: VCP.GREEN} );
+				var cube = new THREE.Mesh( geometry, material );
+				scene.add( cube );
+				cube.position.set(-5,(-height/2)+0.5, -5);
+				
+				var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+				var material = new THREE.MeshBasicMaterial( {color: VCP.GREEN} );
+				var cube = new THREE.Mesh( geometry, material );
+				scene.add( cube );
+				cube.position.set(-5,(-height/2)+0.5, -10);
+				
+				var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+				var material = new THREE.MeshBasicMaterial( {color: VCP.GREEN} );
+				var cube = new THREE.Mesh( geometry, material );
+				scene.add( cube );
+				cube.position.set(5,(-height/2)+0.5, -5);
+				
+				var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+				var material = new THREE.MeshBasicMaterial( {color: VCP.GREEN} );
+				var cube = new THREE.Mesh( geometry, material );
+				scene.add( cube );
+				cube.position.set(5,(-height/2)+0.5, -10);
+
+				//
+				
+				var grid = VCP.Grid(100, 1);
+				grid.position.y = -height/2;
+				scene.add(grid);
+				
+				renderer = new THREE.WebGLRenderer({antialias:true});
+				renderer.setClearColor( 0xf0f0f0 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				
+				effect = new THREE.OculusRiftEffect( renderer, {worldScale: 100} );
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				container.appendChild( stats.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				effect.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			//
+			
+			function change_uvs( geometry, unitx, unity, offsetx, offsety ) {
+				var faceVertexUvs = geometry.faceVertexUvs[ 0 ];
+				for ( var i = 0; i < faceVertexUvs.length; i ++ ) {
+					var uvs = faceVertexUvs[ i ];
+					for ( var j = 0; j < uvs.length; j ++ ) {
+						var uv = uvs[ j ];
+						uv.x = ( uv.x + offsetx ) * unitx;
+						uv.y = ( uv.y + offsety ) * unity;
+					}
+				}
+			}
+			
+			//
+
+
+			function render() {
+				requestAnimationFrame( render );
+				var delta = clock.getDelta();
+				
+				stats.update();
+				controls.update(delta);
+				
+				if ( video.readyState === video.HAVE_ENOUGH_DATA ) {
+
+					imageContext.drawImage( video, 0, 0 );
+
+					if ( texture ) texture.needsUpdate = true;
+					if ( textureReflection ) textureReflection.needsUpdate = true;
+				}
+
+				imageReflectionContext.drawImage( image, 0, 0 );
+				imageReflectionContext.fillStyle = imageReflectionGradient;
+				imageReflectionContext.fillRect( 0, 0, videoWidth, videoHeight );
+
+				effect.render( scene, camera );
+			}
+
+		</script>
+	</body>
+</html>

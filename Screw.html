@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Screw Theory</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="icon" 
+              type="image/png" 
+              href="favicon.ico" />
+
+        <style type="text/css">
+
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100%; 
+                max-height: 100%; 
+                font-family:Sans-serif;
+                line-height: 1.5em;
+            }
+
+            main {
+                position: fixed;
+                top: 50px; /* Set this to the height of the header */
+                bottom: 50px; /* Set this to the height of the footer */
+                left: 230px; 
+                right: 0;
+                overflow: auto; 
+                background: #fff;
+            }
+
+            #header {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 50px; 
+                overflow: hidden; /* Disables scrollbars on the header frame. To enable scrollbars, change "hidden" to "scroll" */
+                background: #BCCE98;
+            }
+
+            #footer {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: 50px; 
+                overflow: hidden; /* Disables scrollbars on the footer frame. To enable scrollbars, change "hidden" to "scroll" */
+                background: #BCCE98;
+            }
+
+            #tablebody {
+
+                width: 40%;
+                overflow: auto;
+            }
+
+
+            #canvas {
+                position: fixed;
+                top: 50px; 
+                right: 0;
+                width: 50%;
+                height: 80%; 
+                overflow: hidden; 
+            }
+
+            #info {
+                position: absolute;
+                top: 50px;
+                left: 10px;
+                padding: 5px;
+            }
+
+            #gui {
+                position:absolute;
+                top: 0px;
+                right: -10px;
+            }
+
+            #mechlabImg {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+            }
+
+            #nav {
+                position: absolute; 
+                top: 50px; /* Set this to the height of the header */
+                bottom: 50px; /* Set this to the height of the footer */
+                left: 0; 
+                width: 230px;
+                overflow: auto; /* Scrollbars will appear on this frame only when there's enough content to require scrolling. To disable scrollbars, change to "hidden", or use "scroll" to enable permanent scrollbars */
+                background: #DAE9BC; 		
+            }
+
+            .innertube {
+                margin: 15px; /* Provides padding for the content */
+            }
+
+            p {
+                color: #555;
+            }
+
+            nav ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            nav ul a {
+                color: darkgreen;
+                text-decoration: none;
+            }
+
+            /*IE6 fix*/
+            * html body{
+                padding: 50px 0 50px 230px; /* Set the first value to the height of the header, the third value to the height of the footer, and last value to the width of the nav */
+            }
+
+            * html main{ 
+                height: 100%; 
+                width: 100%; 
+            }
+
+            table.GeneratedTable {
+                width:100%;
+                background-color:#FFFFFF;
+                border-collapse:collapse;border-width:1px;
+                border-color:#336600;
+                border-style:solid;
+                color:#009900;
+            }
+
+            table.GeneratedTable td, table.GeneratedTable th {
+                border-width:1px;
+                border-color:#336600;
+                border-style:solid;
+                padding:3px;
+            }
+
+            table.GeneratedTable thead {
+                background-color:#CCFF99;
+            }
+
+            button {
+                float: left;
+                margin-top: 10px;
+                margin-right: 10px;
+            }
+
+
+        </style>
+
+
+    </head>
+    <body>
+        <header id="header">
+            <div class="innertube">
+                <p><a href="index.html" style="text-decoration: none; color: darkgreen;">Virtual Crane Prototyping</a> - Screw theory kinematic modeling </p>
+            </div>
+        </header>
+
+        <main>
+            <div class="innertube">
+
+                <div id="tablebody">
+                    <h1>Rodrigues-parameters</h1>
+
+
+                    <!-- HTML Code -->
+                    <table class="GeneratedTable">
+
+                        <thead>
+                            <tr>
+                                <th>Joint</th>
+                                <th>s<sub>i</sub></th>
+                                <th>s<sub>0,i</sub></th>
+                                <th>&theta;<sub>i</sub></th>
+                                <th>t<sub>i</sub></th>
+                                <th>Min</th>
+                                <th>Max</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table">
+                        </tbody>
+                    </table> 
+                    <button id="addRowButton">Add row</button>
+                    <button id="removeRowButton">Remove row</button>
+                    <button id="updateButton">Update</button>
+
+                    <div id="canvas">
+                        <div id="info"></div>
+                        <div id="gui"></div>
+                    </div>
+
+
+                    <div id="mechlabImg"><img src="mechlab_logo.PNG" alt="Mechlab logo" style="width:300px;height:100px"></div>
+                </div>
+            </div>
+        </main>
+
+        <nav id="nav">
+            <div class="innertube">
+                <h1>Links</h1>
+                <ul>
+                    <li><a href="https://www.hials.no/">AAUC</a></li>
+                    <li><a href="http://amo.hials.no/mechatronics/">AAUC - Mechlab</a></li>
+                </ul>
+
+            </div>
+        </nav>	
+
+        <footer id="footer">
+            <div class="innertube">
+                <p>&copy; 2015 Aalesund University College</p>
+            </div>
+        </footer>
+
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+        <script src="three/Detector.js"></script>
+        <script src="three/mythree.min.js"></script>
+         <script src="three/examples/js/libs/dat.gui.min.js"></script>
+
+        <script src="js/VCP.js"></script>
+
+        <script src="js/numeric-1.2.6.min.js"></script>
+
+        <script>
+
+            $(document).ready(function () {
+
+                if (!Detector.webgl) {
+                    Detector.addGetWebGLMessage();
+                    document.getElementById('canvas').innerHTML = "";
+                }
+
+                var container, renderer, scene, camera;
+                var controls, stats, gui;
+
+                var helpers = [];
+                var lines = [];
+
+                var values = {};
+
+                init();
+                render();
+
+                function init() {
+
+                    container = document.getElementById('canvas');
+                    document.body.appendChild(container);
+
+                    renderer = new THREE.WebGLRenderer({antialiasing: true});
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+                    renderer.setClearColor(new THREE.Color(0.9, 0.9, 0.9));
+                    container.appendChild(renderer.domElement);
+
+                    scene = new THREE.Scene();
+
+
+                    var gridHelper = new THREE.GridHelper(50, 1);
+                    gridHelper.rotateX(Math.PI / 2);
+                    scene.add(gridHelper);
+
+                    camera = new THREE.PerspectiveCamera(55, container.offsetWidth / container.offsetHeight, 0.5, 10000);
+                    camera.up.set(0, 0, 1);
+                    camera.position.set(-10, -10, 10);
+
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.maxDistance = 500.0;
+                    controls.maxPolarAngle = Math.PI * 0.495;
+                    controls.center.set(0, 0, 0);
+
+                    stats = new Stats();
+                    stats.domElement.style.position = 'absolute';
+                    stats.domElement.style.top = '0px';
+                    container.appendChild(stats.domElement);
+
+
+                    var info = "<span style='color:#ff0000'>Red:</span> X-Axis"
+                            + "<br>"
+                            + "<span style='color:#00ff00'>Green:</span> Y-Axis"
+                            + "<br>"
+                            + "<span style='color:#0000ff'>Blue:</span> Z-Axis";
+
+                    $('#info').html(info);
+
+                    window.addEventListener('resize', onWindowResize, false);
+
+                }
+
+                function onWindowResize() {
+
+                    camera.aspect = container.offsetWidth / container.offsetHeight;
+                    camera.updateProjectionMatrix();
+
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+
+                    render();
+                }
+
+
+                function render() {
+
+                    requestAnimationFrame(render);
+
+                    stats.update();
+                    controls.update();
+
+                    renderer.render(scene, camera);
+
+                }
+
+
+                var numRows = 0;
+                var tableRows = [];
+                var tableCells = [];
+
+                generateTableRow([0, 0, 1], [0, 0, 2], 0, '-', -90, 90);
+                generateTableRow([0, 0, 1], [2, 0, 2], 0, '-', -90, 90);
+                generateTableRow([0, 0, 1], [4, 0, 2], 0, '-', -90, 90);
+                generateTableRow([0, 0, 1], [4, 0, 2], '-', 0, -2, 0);
+
+
+                $('#addRowButton').click(function () {
+                    generateTableRow();
+                });
+
+                $('#updateButton').click(function () {
+
+                    var table = update();
+
+                    if (gui) {
+                        gui.domElement.remove();
+                    }
+                    gui = new dat.GUI();
+                    $('#gui').append(gui.domElement);
+                    var folder = gui.addFolder('Joint values');
+                    folder.open();
+
+
+                    for (var i = 0; i < table.length; i++) {
+
+                        var theta = table[i][2];
+                        var t = table[i][3];
+                        var min = table[i][4];
+                        var max = table[i][5];
+
+                        if (theta !== '-') {
+                            values['j' + (i + 1)] = theta;
+                        } else {
+                            values['j' + (i + 1)] = t;
+                        }
+
+
+                        var j = folder.add(values, 'j' + (i + 1), min, max);
+                        j.onChange(function (value) {
+
+                            for (var k = 0; k < numRows; k++) {
+                                if (table[k][2] !== '-') {
+                                    tableCells[k][2].text(values['j' + (k + 1)].toFixed(2));
+                                } else {
+                                    tableCells[k][3].text(values['j' + (k + 1)].toFixed(2));
+                                }
+                            }
+                            update();
+                        });
+                    }
+
+                });
+
+                $('#removeRowButton').click(function () {
+                    destroyTableRow();
+                });
+
+                function update() {
+                     var table = parseTable();
+
+                    for (var i = 0; i < helpers.length; i++) {
+                        scene.remove(helpers[i]);
+                    }
+                    helpers = [];
+
+                    for (var i = 0; i < lines.length; i++) {
+                        scene.remove(lines[i]);
+                    }
+                    lines = [];
+
+                    getFwdKin(table);
+                    var material = new THREE.LineBasicMaterial({
+                        color: 0x000000
+                    });
+                    var geometry = new THREE.Geometry();
+                    for (var i = 1; i < helpers.length; i++) {
+                        geometry.vertices.push(helpers[i - 1].position);
+                        geometry.vertices.push(helpers[i].position);
+                    }
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    lines.push(line);
+                    
+                    return table;
+                }
+
+
+
+                function generateTableRow(n1, n2, n3, n4, n5, n6) {
+
+                    if (numRows > 8) {
+                        alert('Maximum number of rows reached!');
+                        return;
+                    }
+
+                    tableCells.push([]);
+                    var tr = $('<tr>').appendTo($('#table'));
+                    tableRows.push(tr);
+                    for (var i = 0; i < 7; i++) {
+
+                        if (i === 0) {
+                            $("<td></td>").text(numRows + 1).appendTo(tr);
+                        } else if (i === 1 || i === 2) {
+                            tableCells[numRows].push($("<td contenteditable='true'></td>").text(0 + " " + 0 + " " + 0).appendTo(tr));
+                        } else {
+                            tableCells[numRows].push(
+                                    $("<td contenteditable='true'></td>").text(0).appendTo(tr));
+                        }
+                    }
+
+                    if (n1) {
+                        tableCells[numRows][0].text(n1[0] + " " + n1[1] + " " + n1[2]); //s
+                    }
+                    if (n2) {
+                        tableCells[numRows][1].text(n2[0] + " " + n2[1] + " " + n2[2]); //s0
+                    }
+                    if (n3) {
+                        tableCells[numRows][2].text(n3); //theta
+                    }
+                    if (n4) {
+                        tableCells[numRows][3].text(n4); //t
+                    }
+                    if (n5) {
+                        tableCells[numRows][4].text(n5); //min
+                    }
+                    if (n6) {
+                        tableCells[numRows][5].text(n6); //max
+                    }
+
+                    numRows++;
+                }
+
+                function destroyTableRow() {
+                    if (numRows > 0) {
+                        $(tableRows[numRows - 1]).remove();
+                        numRows--;
+                        tableRows.pop();
+                        tableCells.pop();
+                    } else {
+                        alert('Nothing to remove!');
+                    }
+                }
+
+                function parseTable() {
+                    var table = [];
+                    for (var i = 0; i < numRows; i++) {
+                        table.push([]);
+
+                        var s_split = tableCells[i][0].text().split(' ');
+                        var s = new THREE.Vector3(parseFloat(s_split[0]), parseFloat(s_split[1]), parseFloat(s_split[2])).normalize();
+
+                        var s0_split = tableCells[i][1].text().split(' ');
+                        var s0 = new THREE.Vector3(parseFloat(s0_split[0]), parseFloat(s0_split[1]), parseFloat(s0_split[2]));
+
+                        var theta = tableCells[i][2].text();
+                        if (theta !== '-') {
+                            theta = THREE.Math.degToRad(parseFloat(theta));
+                        }
+
+                        var t = tableCells[i][3].text();
+                        if (t !== '-') {
+                            t = parseFloat(t);
+                        }
+
+                        var min = parseFloat(tableCells[i][4].text());
+                        var max = parseFloat(tableCells[i][5].text());
+
+
+                        table[i].push(s, s0, theta, t, min, max);
+
+                    }
+                    return table;
+                }
+
+                function getFwdKin(table) {
+
+                    var I = new THREE.Matrix4();
+                    var tmp = new THREE.Matrix4();
+
+                    var result = new THREE.Matrix4();
+                    var results = [];
+
+                    var axisHelper = new THREE.AxisHelper(2);
+                    axisHelper.position.setFromMatrixPosition(result);
+                    axisHelper.rotation.setFromRotationMatrix(result);
+                    helpers.push(axisHelper);
+                    scene.add(axisHelper);
+
+                    for (var i = 0; i < numRows; i++) {
+
+                        var s = table[i][0];
+                        var s0 = table[i][1];
+                        var theta = table[i][2];
+                        var t = table[i][3];
+
+                        if (theta !== '-') {
+
+                            tmp.makeRotationFromQuaternion(new THREE.Quaternion().setFromAxisAngle(s, theta));
+
+                            var p = s0.clone().applyMatrix4(I.identity().sub(tmp));
+
+                            tmp.elements[12] = p.x;// s0.x //+ p.x;
+                            tmp.elements[13] = p.y;// s0.y //+ p.y;
+                            tmp.elements[14] = p.z;//s0.z //+ p.z;  
+                        } else {
+
+                            var p = new THREE.Vector3().copy(s).multiplyScalar(t);
+                            tmp.identity();
+                            tmp.elements[12] = p.x;
+                            tmp.elements[13] = p.y;
+                            tmp.elements[14] = p.z;
+
+                        }
+
+                        result.multiply(tmp);
+                        results.push(result.clone().multiply(new THREE.Matrix4().makeTranslation(s0.x, s0.y, s0.z)));
+
+
+                    }
+
+                    for (var i = 0; i < results.length; i++) {
+                        var tmp = new THREE.Matrix4().copy(results[i]);
+                        var axisHelper = new THREE.AxisHelper(2);
+                        axisHelper.position.setFromMatrixPosition(tmp);
+                        axisHelper.rotation.setFromRotationMatrix(tmp);
+                        helpers.push(axisHelper);
+                        scene.add(axisHelper);
+                    }
+
+                    return results;
+                }
+
+                $('#updateButton').click();
+            });
+
+
+            THREE.Matrix4.prototype.sub = function (m) {
+
+                var te = this.elements;
+                var tm = m.elements;
+
+               te[ 0 ] -= tm[ 0 ];
+                te[ 1 ] -= tm[ 1 ];
+                te[ 2 ] -= tm[ 2 ];
+                te[ 3 ] -= tm[ 3 ];
+                te[ 4 ] -= tm[ 4 ];
+                te[ 5 ] -= tm[ 5 ];
+                te[ 6 ] -= tm[ 6 ];
+                te[ 7 ] -= tm[ 7 ];
+                te[ 8 ] -= tm[ 8 ];
+                te[ 9 ] -= tm[ 9 ];
+                te[ 10 ] -= tm[ 10 ];
+                te[ 11 ] -= tm[ 11 ];
+                te[ 12 ] -= tm[ 12 ];
+                te[ 13 ] -= tm[ 13 ];
+                te[ 14] -= tm[ 14 ];
+                te[ 15 ] -= tm[ 15 ];
+
+                return this;
+            };
+            
+          
+
+            THREE.Matrix3.prototype.sub = function (m) {
+
+                var te = this.elements;
+                var tm = m.elements;
+
+                te[ 0 ] -= tm[ 0 ];
+                te[ 1 ] -= tm[ 1 ];
+                te[ 2 ] -= tm[ 2 ];
+                te[ 3 ] -= tm[ 3 ];
+                te[ 4 ] -= tm[ 4 ];
+                te[ 5 ] -= tm[ 5 ];
+                te[ 6 ] -= tm[ 6 ];
+                te[ 7 ] -= tm[ 7 ];
+                te[ 8 ] -= tm[ 8 ];
+                
+                
+
+                return this;
+            };
+
+        </script>
+
+    </body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>VCP - Crane</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <style>
+        body {
+            color: #888888;
+            font-family: Monospace;
+            font-size: 13px;
+            background-color: #000;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 200px;
+            left: calc(50% - 100px);
+            text-align: center;
+        }
+
+        a {
+            color: #00f;
+        }
+    </style>
+
+    <script src="three/build/three.min.js"></script>
+    <script src="three/examples/js/geometries/ConvexGeometry.js"></script>
+	
+	<script src="three/examples/js/Mirror.js"></script>
+    <script src="three/examples/js/WaterShader.js"></script>
+
+    <script src="three/examples/js/controls/OrbitControls.js"></script>
+	
+	<script src="three/examples/js/effects/OculusRiftEffect.js"></script>
+
+    <script src="three/examples/js/loaders/STLLoader.js"></script>
+    <script src="three/examples/js/loaders/ColladaLoader.js"></script>
+
+    <script src="three/examples/js/libs/dat.gui.min.js"></script>
+    <script src="three/examples/js/libs/stats.min.js"></script>
+	
+    <script src="js/numeric-1.2.6.min.js"></script>
+	
+    <script src="js/VCPtmp.js"></script>
+	<script src="js/BoundingBox.js"></script>
+	<script src="js/GridBox.js"></script>
+	<script src="js/CraneTmp.js"></script>
+	<script src="js/NormUtil.js"></script>
+    
+	<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-52070322-1', 'auto');
+		  ga('send', 'pageview');
+	</script>
+   
+</head>
+<body>
+
+    <div id="header" style="background-color: #FFA500;">
+        <h1 style="margin-top: 0; text-align: center">Collada Knuckle-Boom Crane</h1>
+    </div>
+
+    <div id="container"></div>
+
+    <div id="footer" style="background-color: #FFA500;">
+        <h1 style="margin-bottom: 0; clear: both; text-align: center;">Author  Lars Ivar Hatledal @ Aalesund University College</h1>
+    </div>
+
+    <script>
+        "use strict";
+		
+		var windowHalfX = window.innerWidth / 2;
+		var windowHalfY = window.innerHeight / 2;
+
+        // scene size
+        var WIDTH = window.innerWidth * 1;
+        var HEIGHT = window.innerHeight * 0.9;
+
+        var NEAR = 0.01;
+        var FAR = 1000;
+
+        var scene, renderer, canvas, camera, controls, stats;
+        var crane, mirror, effect;
+		
+		var vr = {vr:false};
+
+        var gui = new dat.GUI();
+        var clock = new THREE.Clock();
+
+        function init() {
+            canvas = document.getElementById('container');
+
+            scene = new THREE.Scene();
+            scene.add(new VCP.Skybox(FAR / 2));
+            camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, NEAR, FAR );
+            camera.position.set(25, 25, 25);
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+            renderer = new THREE.WebGLRenderer({ antialiasing: true });
+            renderer.setSize(WIDTH, HEIGHT);
+            canvas.appendChild(renderer.domElement);
+			
+			effect = new THREE.OculusRiftEffect( renderer, {worldScale: 100} );
+			effect.setSize( window.innerWidth, window.innerHeight );
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.maxDistance = 200;
+
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.top = '0px';
+            stats.domElement.style.left = '0px';
+            canvas.appendChild(stats.domElement);
+
+            scene.add(new VCP.Skybox(FAR / 2));
+
+            mirror = new VCP.Mirror(100, renderer, camera, WIDTH, HEIGHT);
+            mirror.rotateX(-Math.PI / 2);
+            scene.add(mirror);
+
+            scene.add(VCP.Grid(50,1));
+
+            var light1 = new THREE.PointLight(VCP.WHITE, 1.5, 100);
+            light1.position.set(0, 50, -25);
+            scene.add(light1);
+
+            var light2 = new THREE.PointLight(VCP.WHITE, 1.5, 100);
+            light2.position.set(0, 50, 25);
+            scene.add(light2);
+
+
+            var light3 = new THREE.PointLight(VCP.WHITE, 1.5, 100);
+            light3.position.set(25, 50, 0);
+            scene.add(light3);
+
+            var light4 = new THREE.PointLight(VCP.WHITE, 1.5, 100);
+            light4.position.set(-25, 50, 0);
+            scene.add(light4);
+           
+            window.addEventListener('resize', onWindowResize, false);
+
+            VCP.LoadCrane(onCraneLoaded);
+        }
+		
+		function onCraneLoaded(c) {
+				crane = c;
+				scene.add(crane);
+				crane.updateGUI(gui);
+				gui.add(vr, 'vr').onChange(onWindowResize);
+		}
+		
+
+        function render() {
+            requestAnimationFrame(render);
+            var delta = clock.getDelta();
+            var time = clock.getElapsedTime();
+
+            controls.update(delta);
+            stats.update();
+            mirror.render();
+
+            if (crane ) {
+                crane.update(delta);
+                mirror.mirrorMesh.visible = !crane.showWorkspace && !crane.showBoundingBox;   
+            }
+			
+			if (vr.vr) {
+				renderer.render(scene, camera);
+				effect.render(scene, camera);
+			} else {
+				renderer.render(scene, camera);
+			}
+        }
+
+        function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				if (vr.vr) {
+					effect.setSize( window.innerWidth, window.innerHeight );
+				} else {
+					renderer.setSize( window.innerWidth, window.innerHeight );
+				}
+				
+			}
+
+        init();
+        render();
+
+
+    </script>
+
+</body>
+</html>

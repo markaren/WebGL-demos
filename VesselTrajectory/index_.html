@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - geometry - terrain</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				text-align:center;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #a06851;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="info"><a href="http://amo.hials.no/mechatronics/" target="_blank">Mechatronics lab</a> - vessel trajectory demo</div>
+
+		<script src="three.min.js"></script>
+
+		<script src="OrbitControls.js"></script>
+		<script src="Mirror.js"></script>
+		<script src="WaterShader.js"></script>
+
+		<script src="Detector.js"></script>
+		<script src="stats.min.js"></script>
+        
+        <script src="ColladaLoader.js"></script>
+        
+        <script src="Quat.js"></script>
+        <script src="DualQuat.js"></script>
+        <script src="Trajectory.js"></script>
+        
+
+		<script>
+
+			if ( ! Detector.webgl ) {
+
+				Detector.addGetWebGLMessage();
+				document.getElementById( 'container' ).innerHTML = "";
+
+			}
+
+			var container, stats;
+			var camera, scene, renderer;
+			
+			var waterNormals;
+            
+            var dae, traj;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				scene = new THREE.Scene();
+
+				camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.5, 300000 );
+				camera.position.set( 500, 250, 500 );
+
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				controls.userPan = false;
+				controls.userPanSpeed = 0.0;
+				controls.maxDistance = 3000.0;
+				controls.maxPolarAngle = Math.PI * 0.495;
+				controls.center.set( 0, 0, 0 );
+
+				var light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+				light.position.set( - 1, 1, - 1 );
+				scene.add( light );
+
+				
+				waterNormals = new THREE.ImageUtils.loadTexture( 'textures/waternormals.jpg' );
+				waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping; 
+
+				water = new THREE.Water( renderer, camera, scene, {
+					textureWidth: 512, 
+					textureHeight: 512,
+					waterNormals: waterNormals,
+					alpha: 	0.9,
+					sunDirection: light.position.clone().normalize(),
+					sunColor: 0xffffff,
+					waterColor: 0x001e0f,
+					distortionScale: 50.0,
+				} );
+
+
+				mirrorMesh = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry( 2000 * 50, 2000 * 50 ),
+					water.material
+				);
+
+				mirrorMesh.add( water );
+				mirrorMesh.rotation.x = - Math.PI * 0.5;
+				scene.add( mirrorMesh );
+
+
+				// load skybox
+
+				var cubeMap = new THREE.CubeTexture( [] );
+				cubeMap.format = THREE.RGBFormat;
+				cubeMap.flipY = false;
+
+				var loader = new THREE.ImageLoader();
+				loader.load( 'textures/skyboxsun25degtest.png', function ( image ) {
+
+					var getSide = function ( x, y ) {
+
+						var size = 1024;
+
+						var canvas = document.createElement( 'canvas' );
+						canvas.width = size;
+						canvas.height = size;
+
+						var context = canvas.getContext( '2d' );
+						context.drawImage( image, - x * size, - y * size );
+
+						return canvas;
+
+					};
+
+					cubeMap.images[ 0 ] = getSide( 2, 1 ); // px
+					cubeMap.images[ 1 ] = getSide( 0, 1 ); // nx
+					cubeMap.images[ 2 ] = getSide( 1, 0 ); // py
+					cubeMap.images[ 3 ] = getSide( 1, 2 ); // ny
+					cubeMap.images[ 4 ] = getSide( 1, 1 ); // pz
+					cubeMap.images[ 5 ] = getSide( 3, 1 ); // nz
+					cubeMap.needsUpdate = true;
+
+				} );
+
+				var cubeShader = THREE.ShaderLib['cube'];
+				cubeShader.uniforms['tCube'].value = cubeMap;
+
+				var skyBoxMaterial = new THREE.ShaderMaterial( {
+					fragmentShader: cubeShader.fragmentShader,
+					vertexShader: cubeShader.vertexShader,
+					uniforms: cubeShader.uniforms,
+					depthWrite: false,
+					side: THREE.BackSide
+				});
+
+				var skyBox = new THREE.Mesh(
+					new THREE.BoxGeometry( 100000, 100000, 100000 ),
+					skyBoxMaterial
+				);
+				
+				scene.add( skyBox );
+                
+                //
+                
+                var loader = new THREE.ColladaLoader();
+                loader.options.convertUpAxis = true;
+                loader.load( 'models/vessel.dae', function ( collada ) {
+
+                    dae = collada.scene;
+
+                    dae.scale.x = dae.scale.y = dae.scale.z = 10;
+                    dae.position.y = -8;
+                    dae.updateMatrix();
+
+                    scene.add(dae);
+
+
+                });
+                
+                
+                var loader = new THREE.ColladaLoader();
+                loader.options.convertUpAxis = true;
+                loader.load( 'models/platform2.dae', function ( collada ) {
+
+                    var dae2 = collada.scene;
+
+                    dae2.scale.x = dae2.scale.y = dae2.scale.z = 15;
+                  //  dae2.position.x = -100;
+                    dae2.position.y = -60;
+                    dae2.position.z = -100;
+                     
+                    dae2.updateMatrix();
+
+                    scene.add(dae2);
+
+
+                });
+                
+                //
+                
+                var lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0x0000ff
+                });
+                
+                
+                var lineGeometry = new THREE.Geometry();
+                
+                for (var i = 0; i < 360; i++) {
+                     lineGeometry.vertices.push(new THREE.Vector3( 300 * Math.sin( THREE.Math.degToRad( i ) ), 1, 200 * Math.cos(  THREE.Math.degToRad( i ) ) ) );
+                }
+                
+                scene.add(new THREE.Line(lineGeometry, lineMaterial));
+                
+                //
+                traj = new Trajectory(function(positions){
+                
+                    var lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0xff0000
+                    });
+
+
+                    var lineGeometry = new THREE.Geometry();
+
+                    for (var i = 0; i < positions.length; i++) {
+                        var v = new THREE.Vector3().copy(positions[i]);
+                        v.y = 1;
+                        lineGeometry.vertices.push(v);
+                    }
+                    
+                    scene.add(new THREE.Line(lineGeometry, lineMaterial));
+                
+                });
+                
+                
+                
+                
+                
+                setInterval(function () {
+                    if (dae) {
+                        
+                        traj.update(dae);
+                        
+                    }
+                }, 36);
+                
+            }
+            
+            
+            
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				var time = performance.now() * 0.001;
+
+
+				water.material.uniforms.time.value += 1.0 / 60.0;
+				controls.update();
+				water.render();
+				renderer.render( scene, camera );
+
+			}
+            
+            
+
+		</script>
+	</body>
+</html>

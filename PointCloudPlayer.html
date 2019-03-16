@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Point Cloud Viewer</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+		
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-52070322-1', 'auto');
+		  ga('send', 'pageview');
+		</script>
+	
+	</head>
+	<body>
+
+		<script src="three/build/three.min.js"></script>
+		<script src="three/examples/js/libs/stats.min.js"></script>
+		<script src="three/examples/js/controls/OrbitControls.js"></script>
+		<script src="three/examples/js/effects/OculusRiftEffect.js"></script>
+		<script src="js/VCP.js"></script>
+		
+		
+		<script>
+			"use strict";
+			
+			var container, stats;
+			var camera, scene, renderer, effect, controls;
+			
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+			
+			var numFiles = 235;
+			var clouds = [];
+			var cloud;
+			var fileNum = 0;
+			
+			var clock = new THREE.Clock();
+			
+			var files = [];
+
+			init();
+			render();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				
+				var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = '<font color="red"><a href="http://laht.info" target="_blank">laht.info</a> </font>';
+				container.appendChild( info );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set(0,0,-2);
+				
+				camera.lookAt(0,0,0);
+				
+
+				scene = new THREE.Scene();
+				//scene.add(new VCP.Skybox(1000));
+				var grid = new VCP.Grid(2,0.1);
+				grid.position.set(0,-0.5,0);
+				scene.add(grid);
+				
+				renderer = new THREE.WebGLRenderer({antialias:true});
+				renderer.setClearColor( 0xf0f0f0 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				
+				controls = new THREE.OrbitControls(camera, renderer.domElement);
+				
+				effect = new THREE.OculusRiftEffect( renderer, {worldScale: 100} );
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				stats.domElement.style.right = '0px';
+				container.appendChild( stats.domElement );
+				
+				var light = new THREE.PointLight( 0xff0000, 1, 100 );
+				light.position.set( 50, 50, 50 );
+				scene.add( light );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+				
+				//
+				for (var k = 0; k < numFiles; k++) {
+					getFileFromServer("points3/cloud_" + k + ".ply", k, function(frameNum, contents) {
+					if (contents) {
+						var lines = contents.split("\n");
+								
+						var num =  parseInt(lines[2].split(" ")[2]);
+
+						var colors = [];
+						var particles = new THREE.Geometry();
+
+						var offset = 10;
+						for (var i = 0; i < num; i++) {
+							var data = lines[i+offset].split(" ");
+							var vertex = new THREE.Vector3(parseFloat(data[0]), parseFloat(data[1]), parseFloat(data[2]));//.multiplyScalar(100);
+							particles.vertices.push(vertex);
+										
+							var r = parseInt(data[3]); 
+							var g = parseInt(data[4]); 
+							var b = parseInt(data[5]); 
+							colors[i] = new THREE.Color("rgb("+ r + ", " + g + ", " + b + ")" );
+						}
+						particles.colors = colors;
+						var material = new THREE.PointCloudMaterial( { size: 0.001, vertexColors: THREE.VertexColors, transparent: true } );
+						
+						clouds[frameNum] = (new THREE.PointCloud(particles, material));
+						//clouds[frameNum].scale.x = clouds[frameNum].scale.y = clouds[frameNum].scale.z = 10;
+						console.log(frameNum);
+						}
+					});
+				}
+				
+			}
+
+			function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				effect.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			//
+
+
+			function render() {
+				//requestAnimationFrame( render );
+				
+				window.setTimeout(render, 1000 / 24);
+				
+				var delta = clock.getDelta();
+				
+				stats.update();
+				controls.update(delta);
+				
+				
+					if (cloud) {
+						scene.remove(cloud);
+					}
+					cloud = clouds[fileNum];
+					if (cloud) {
+						scene.add(cloud);
+					}
+					
+					
+					if (fileNum === clouds.length-1) {
+						fileNum = 0;
+					} else {
+						fileNum++;
+					}
+				
+
+				effect.render( scene, camera );
+			}
+			
+			function getFileFromServer(url, frameNum, doneCallback) {
+				var xhr;
+
+				xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = handleStateChange;
+				xhr.open("GET", url, true);
+				xhr.send();
+
+				function handleStateChange() {
+					if (xhr.readyState === 4) {
+						doneCallback(frameNum, xhr.status == 200 ? xhr.responseText : null);
+					}
+				}
+			}
+			
+		</script>
+	</body>
+</html>

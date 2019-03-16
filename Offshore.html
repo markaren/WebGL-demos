@@ -1,0 +1,219 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>VCP - Offshore</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <style>
+        body {
+            color: #888888;
+            font-family: Monospace;
+            font-size: 13px;
+            background-color: #000;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 200px;
+            left: calc(50% - 100px);
+            text-align: center;
+        }
+
+        a {
+            color: #00f;
+        }
+    </style>
+
+    <script src="three/build/three.min.js"></script>
+
+    <script src="three/examples/js/Mirror.js"></script>
+    <script src="three/examples/js/WaterShader.js"></script>
+
+
+    <script src="three/examples/js/controls/OrbitControls.js"></script>
+    <script src="three/examples/js/controls/TransformControls.js"></script>
+
+    <script src="three/examples/js/loaders/STLLoader.js"></script>
+    <script src="three/examples/js/loaders/ColladaLoader.js"></script>
+
+    <script src="three/examples/js/libs/dat.gui.min.js"></script>
+    <script src="three/examples/js/libs/stats.min.js"></script>
+
+    <script src="three/examples/js/geometries/ConvexGeometry.js"></script>
+	<script src="three/examples/js/effects/OculusRiftEffect.js"></script>
+	
+	<script src="js/numeric-1.2.6.min.js"></script>
+	
+    <script src="js/VCP.js"></script>
+	<script src="js/Crane.js"></script>
+	<script src="js/Vessel.js"></script>
+	<script src="js/Ocean.js"></script>
+	<script src="js/NormUtil.js"></script>
+	<script src="js/GridBox.js"></script>
+	<script src="js/BoundingBox.js"></script>
+	
+</head>
+<body>
+
+    <div id="header" style="background-color: #FFA500;">
+        <h1 style="margin-top: 0; text-align: center">VCP</h1>
+    </div>
+
+    <div id="container"></div>
+
+    <div id="footer" style="background-color: #FFA500;">
+        <h1 style="margin-bottom: 0; clear: both; text-align: center;">Author  Lars Ivar Hatledal @ Aalesund University College</h1>
+    </div>
+	
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-52070322-1', 'auto');
+	  ga('send', 'pageview');
+	</script>
+
+    <script>
+        "use strict";
+       
+        // scene size
+        var WIDTH = window.innerWidth * 1;
+        var HEIGHT = window.innerHeight * 0.9;
+
+        // camera
+        var FOV = 45;
+        var ASPECT = (WIDTH) / (HEIGHT);
+        var NEAR = 0.01;
+        var FAR = 10000;
+
+        var scene, renderer, canvas, camera, controls, stats;
+        var ocean, crane, vessel;
+		var effect;
+		var vr = {vr:false};
+
+        var gui = new dat.GUI();
+        var clock = new THREE.Clock();
+
+        
+        var vesselOrigin = new VCP.TransformHelper(10, 0.5, 0.5);
+
+        function init() {
+            canvas = document.getElementById('container');
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR*2);
+            camera.position.set(200, 75, 200);
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+            renderer = new THREE.WebGLRenderer({ antialiasing: true });
+            renderer.setSize(WIDTH, HEIGHT);
+            canvas.appendChild(renderer.domElement);
+			
+			effect = new THREE.OculusRiftEffect( renderer, {worldScale: 100} );
+			effect.setSize( window.innerWidth, window.innerHeight );
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.maxDistance = FAR/16;
+            controls.maxPolarAngle = Math.PI * 0.495;
+            
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.top = '0px';
+            stats.domElement.style.left = '0px';
+            canvas.appendChild(stats.domElement);
+
+            scene.add(new VCP.Skybox(FAR/2));
+
+            ocean = new VCP.Ocean();
+            scene.add(ocean);
+
+            var light = new THREE.PointLight(VCP.WHITE, 1.5, 250);
+            light.position.y = 100;
+            scene.add(light);
+
+            VCP.LoadVessel(function(v){
+				vessel = v;
+                scene.add(vessel);
+				vessel.updateGUI(gui);
+				ocean.updateGUI(gui);
+			});
+			
+            VCP.LoadCrane(onCraneLoaded);
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+		
+		function onCraneLoaded(c) {
+				crane = c;
+				scene.add(crane);
+				crane.updateGUI(gui);
+				gui.add(vr, 'vr').onChange(onWindowResize);
+		}
+
+
+        function render() {
+            requestAnimationFrame(render);
+            var delta = clock.getDelta();
+            var time = clock.getElapsedTime();
+
+            controls.update(delta);
+
+            stats.update();
+            ocean.update(time);
+
+            if (vessel) {
+                vessel.update(ocean.oceanMesh);
+				if (crane) {
+					crane.position.copy(vessel.position);
+					crane.setRotationFromMatrix(new THREE.Matrix4().copy(vessel.matrix));
+					crane.translateY(11.5);
+					crane.translateX(8);
+					crane.update(delta);
+				}
+            }
+
+            var raycaster = new THREE.Raycaster(new THREE.Vector3(camera.position.x, camera.position.y + 100, camera.position.z), new THREE.Vector3(0, -1, 0));
+            // See if the ray from the camera into the world hits one of our meshes
+            var intersects = raycaster.intersectObject(ocean.oceanMesh);
+            if (intersects.length > 0) {
+                var hit = intersects[0].point;
+                if (camera.position.distanceTo(hit) < 10) {
+                    camera.position.y = hit.y + 10;
+                }
+            }
+            
+			if (vr.vr) {
+				renderer.render(scene, camera);
+				effect.render(scene, camera);
+			}else {
+				renderer.render(scene, camera);
+			}
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight * 0.9;
+            camera.updateProjectionMatrix();
+
+			if (vr.vr) {
+				effect.setSize(window.innerWidth, window.innerHeight*0.9);
+			} else {
+				renderer.setSize(window.innerWidth, window.innerHeight*0.9);
+			}
+
+        }
+
+        init();
+        render();
+
+
+    </script>
+
+</body>
+</html>
